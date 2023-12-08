@@ -1,0 +1,274 @@
+---
+title: "ReproducibleR "
+output:
+  html_document: default
+  pdf_document: default
+date: "2023-10-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE}
+library(ggplot2)
+library(palmerpenguins)
+library(janitor)
+library(dplyr)
+library(ragg)
+
+
+
+
+```
+
+```{r, echo=FALSE}
+head(penguins_clean)
+```
+
+
+## QUESTION 01: Data Visualisation for Science Communication
+
+*Create a figure using the Palmer Penguin dataset that is correct but badly communicates the data. **Do not make a boxplot**.*
+
+*Use the following references to guide you:*
+
+-   [*https://www.nature.com/articles/533452a*](https://www.nature.com/articles/533452a){.uri}
+-   [*https://elifesciences.org/articles/16800*](https://elifesciences.org/articles/16800){.uri}
+
+*Note: Focus on visual elements rather than writing misleading text on it.*
+
+### a) Provide your figure here:
+
+```{r bad figure code, echo=FALSE}
+
+
+flipper_point <- ggplot(data = penguins_clean, 
+                          aes(x = culmen_length_mm, 
+                              y = flipper_length_mm)) +
+                          geom_point(aes(color = species), show.legend = FALSE)
+
+flipper_point
+
+# There is no need to provide the code for your bad figure, just use echo=FALSE so the code is hidden. Make sure your figure is visible after you knit it. 
+
+```
+
+### b) Write about how your design choices mislead the reader about the underlying data (200-300 words).
+
+###Firstly, the x and y axis labels are not readable, the names must be changed to be human readable to explain the variable theyre measuring (for example flipper length (mm)). Secondly, the reader cannot infer much infomation about the relationship between flipper and culmen lengths solely on the raw data points plotted, a line of best fit showing the correlation between the two variables would be suitable to show the true relationship and if it is significant. Further statistical analysis would also be necessary. By simply viewing the scatter plot a reader may assume a positive relationship between flipper and culmen length and between species, whereas this may not be the case even though it seems positive at a glance. Further analyses are necessary.
+
+*Include references.*
+
+------------------------------------------------------------------------
+
+## QUESTION 2: Data Pipeline
+
+*Write a data analysis pipeline in your .rmd RMarkdown file. You should be aiming to write a clear explanation of the steps, the figures visible, as well as clear code.*
+
+*Your code should include the steps practiced in the lab session:*
+
+-   *Load the data*
+
+-   *Appropriately clean the data*
+
+-   *Create an Exploratory Figure (**not a boxplot**)*
+
+-   *Save the figure*
+
+-   ***New**: Run a statistical test*
+
+-   ***New**: Create a Results Figure*
+
+-   *Save the figure*
+
+*An exploratory figure shows raw data, such as the distribution of the data. A results figure demonstrates the stats method chosen, and includes the results of the stats test.*
+
+*Between your code, communicate clearly what you are doing and why.*
+
+*Your text should include:*
+
+-   *Introduction*
+
+-   *Hypothesis*
+
+-   *Stats Method*
+
+-   *Results*
+
+-   *Discussion*
+
+-   *Conclusion*
+
+*You will be marked on the following:*
+
+### a) Your code for readability and functionality
+
+### b) Your figures for communication
+
+### c) Your text communication of your analysis
+
+*Below is a template you can use.*
+
+------------------------------------------------------------------------
+
+### Introduction
+
+```{r Data Exploration}
+## raw data loaded and cleaned
+
+head(penguins_raw)
+
+penguins_clean <- penguins_raw %>%
+  select(-starts_with("Delta")) %>%
+  select(-Comments) %>%
+  clean_names()
+
+head(penguins_clean)
+
+## defining cleaning function
+clean_function <- function(penguins_data) {
+    penguins_data %>%
+        select(-starts_with("Delta")) %>%
+        select(-Comments) %>%
+        clean_names()
+}
+
+## calling function
+penguins_clean <- clean_function(penguins_raw)
+
+## save data
+write.csv(penguins_clean, "data/penguins_clean.csv")
+
+## create explanatory figure
+
+
+### define plotting function
+plotting_function <- function(penguins_data) {
+        flipper_point <- ggplot(data = penguins_clean, 
+                         aes(x = culmen_length_mm, 
+                             y = flipper_length_mm, 
+                             color = species)) +
+  geom_point() +
+  labs(x = "Culmen Length (mm)", y = "Flipper Length (mm)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+}
+
+### call plotting function
+
+flipper_point <- plotting_function(penguins_clean)
+
+### plot
+
+flipper_point
+
+### save figure
+
+agg_png("figures/fig01_15x15.png", 
+        width = 15, height = 15, units = "cm", res = 600, scaling = 1.4)
+flipper_point
+dev.off()
+```
+
+### Hypothesis
+
+### From viewing the raw data, i hypothesise that there is a weak positive correlation between the total flipper and culmen lengths between all species. I also hypothesise a weak positive correlation between individual species.
+
+### Statistical Methods
+
+```{r Statistics}
+### pearsons correlation coefficient test on data for all species
+
+testing_function <- function(penguin_data)  {
+  correlation_result <- cor.test(penguins_clean$flipper_length_mm, penguins_clean$culmen_length_mm, method = "pearson", use = "complete.obs")
+  
+  correlation_coefficient <- correlation_result$estimate
+  p_value <- correlation_result$p.value
+  
+  cat("Pearson's correlation coefficient for all species:", correlation_coefficient, "\n")
+  cat("P-value:", p_value, "\n")
+  
+}
+
+flipper_test <- testing_function(penguins_clean)
+
+flipper_test
+
+### test on each species individually
+
+data <- penguins_clean
+
+species_test_function <- by(data, data$species, function(subset) {
+  result <- cor.test(subset$flipper_length_mm, subset$culmen_length_mm, method = "pearson", use = "complete.obs")
+  return(c(Correlation = result$estimate, P_Value = result$p.value))
+})
+
+
+correlation_table <- do.call(rbind, species_test_function)
+
+
+print(correlation_table)
+
+```
+
+### Results & Discussion
+
+```{r Plotting Results}
+
+correlation_plot_function <- function(penguin_data) {
+        flipper_correlation <- ggplot(data = penguins_clean, 
+                         aes(x = culmen_length_mm, 
+                             y = flipper_length_mm, 
+                             color = species)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, linetype = "solid", color = "black") +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+  labs(x = "Culmen Length (mm)", y = "Flipper Length (mm)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+}
+
+flipper_correlation <- correlation_plot_function(penguin_data)
+
+flipper_correlation
+
+
+```
+## the results of my correlation show a significant relationship (P>0.5) between flipper and culmen lengths for all species combined and for species indiviually.
+
+### Conclusion
+###A positive correlation indicates that as the flipper length increases, the culmen length tends to increase as well. The magnitude of the correlation coefficient provides information about the strength of the relationship. A correlation coefficient closer to 1 indicates a stronger positive linear relationship. All my correlations yield a weak -> meadium stength positive correlation between flipper and culmen lengths. All my correlations also yielded a significant P-value, suggesting that the correlation is unlikely to be purely coincidental and the two traits are more likely related. However, correlation does not imply causation. Even though there is a statistical association between flipper and culmen lengths, it does not necessarily mean that one variable causes the other. There could be other factors or confounding variables influencing the relationship. A significant positive correlation may prompt further investigation into the underlying biological or ecological factors that might explain the observed relationship. Additional data or experiments could help validate and refine the understanding of the connection between flipper and culmen lengths. We should be cautious about drawing strong conclusions without considering other relevant information.
+------------------------------------------------------------------------
+
+## QUESTION 3: Open Science
+
+### a) GitHub
+
+*Upload your RProject you created for **Question 2** and any files and subfolders used to GitHub. Do not include any identifiers such as your name. Make sure your GitHub repo is public.*
+
+*GitHub link:*
+
+*You will be marked on your repo organisation and readability.*
+
+### b) Share your repo with a partner, download, and try to run their data pipeline.
+
+*Partner's GitHub link:*
+
+*You **must** provide this so I can verify there is no plagiarism between you and your partner.*
+
+### c) Reflect on your experience running their code. (300-500 words)
+
+-   *What elements of your partner's code helped you to understand their data pipeline?*
+
+-   *Did it run? Did you need to fix anything?*
+
+-   *What suggestions would you make for improving their code to make it more understandable or reproducible, and why?*
+
+-   *If you needed to alter your partner's figure using their code, do you think that would be easy or difficult, and why?*
+
+### d) Reflect on your own code based on your experience with your partner's code and their review of yours. (300-500 words)
+
+-   *What improvements did they suggest, and do you agree?*
+
+-   *What did you learn about writing code for other people?*
